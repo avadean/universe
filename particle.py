@@ -4,145 +4,91 @@ import numpy as np
 import numpy.random as npr
 
 
+epsilonHyperFeather = 500.0  #########################
+sigmaHyperFeather = 5.0     #########################
+sigmaFifteenHyperFeather = 15.0 * sigmaHyperFeather ** 15.0
+sigmaSevenHyperFeather = 7.0 * sigmaHyperFeather ** 7.0
+
+epsilonFeatherNull = 500.0  #########################
+sigmaFeatherNull = 15.0     #########################
+sigmaFifteenFeatherNull = 15.0 * sigmaFeatherNull ** 15.0
+sigmaSevenFeatherNull = 7.0 * sigmaFeatherNull ** 7.0
+
+epsilonNullHyper = 500.0  #########################
+sigmaNullHyper = 10.0     #########################
+sigmaFifteenNullHyper = 15.0 * sigmaNullHyper ** 15.0
+sigmaSevenNullHyper = 7.0 * sigmaNullHyper ** 7.0
+
+massHyperAvion = 1.01
+massNullAvion = 1.0
+massFeatherAvion = 0.97
+
+sizeHyperAvion = 2
+sizeNullAvion = 5
+sizeFeatherAvion = 3
+
+
+
+def calcHyperFeatherAvionForce(xy, xyArray, epsilon=epsilonHyperFeather,
+                               fifteenSigma=sigmaFifteenHyperFeather, sevenSigma=sigmaSevenHyperFeather):
+    return calcSixteenEightPotential(xy, xyArray, epsilon=epsilon,
+                                     fifteenSigmaToTheFifteen=fifteenSigma, sevenSigmaToTheSeven=sevenSigma)
+
+def calcFeatherNullAvionForce(xy, xyArray, epsilon=epsilonFeatherNull,
+                               fifteenSigma=sigmaFifteenFeatherNull, sevenSigma=sigmaSevenFeatherNull):
+    return calcSixteenEightPotential(xy, xyArray, epsilon=epsilon,
+                                     fifteenSigmaToTheFifteen=fifteenSigma, sevenSigmaToTheSeven=sevenSigma)
+
+def calcNullHyperAvionForce(xy, xyArray, epsilon=epsilonNullHyper,
+                               fifteenSigma=sigmaFifteenNullHyper, sevenSigma=sigmaSevenNullHyper):
+    return calcSixteenEightPotential(xy, xyArray, epsilon=epsilon,
+                                     fifteenSigmaToTheFifteen=fifteenSigma, sevenSigmaToTheSeven=sevenSigma)
+
+
+@njit()
+def calcSixteenEightPotential(xy, xyArray, epsilon, fifteenSigmaToTheFifteen, sevenSigmaToTheSeven):
+
+    diffArray = xyArray - xy
+
+    #if diffArray.size == 2:
+    #    thetaArray = np.arctan2(diffArray[1], diffArray[0])
+    #    diff2Array = diffArray ** 2.0
+    #    distEightArray = (diff2Array[0] + diff2Array[1]) ** 4.0
+    #else:
+    thetaArray = np.arctan2(diffArray[:, 1], diffArray[:, 0])
+    diff2Array = diffArray ** 2.0
+    distEightArray = (diff2Array[:, 0] + diff2Array[:, 1]) ** 4.0
+
+    distSixteenArray = distEightArray * distEightArray
+
+    magFArray = epsilon * (fifteenSigmaToTheFifteen / distSixteenArray - sevenSigmaToTheSeven / distEightArray)
+
+    return np.sum(magFArray * np.cos(thetaArray)), np.sum(magFArray * np.sin(thetaArray))
+
+
+
+'''
 @njit
-def calcInverseQuartic(x, y, xList, yList):
+def calcInverseQuartic(x, y, xList, yList, sign=1):
     n = len(xList)
 
     F = np.array((0.0, 0.0))
 
-    for i in range(n):
-        theta = np.arctan2(yList[i] - y, xList[i] - x)
-        dist2 = (xList[i] - x) ** 2.0 + (yList[i] - y) ** 2.0
-        dist4 = dist2 * dist2
-        magnitudeF = 1.0 / dist4
-        F += np.array((magnitudeF * np.cos(theta), magnitudeF * np.sin(theta)))
+    if sign == 1:
+        for i in range(n):
+            theta = np.arctan2(yList[i] - y, xList[i] - x)
+            dist2 = (xList[i] - x) ** 2.0 + (yList[i] - y) ** 2.0
+            dist4 = dist2 * dist2
+            magnitudeF = 1.0 / dist4
+            F += np.array((magnitudeF * np.cos(theta), magnitudeF * np.sin(theta)))
+
+    else:
+        for i in range(n):
+            theta = np.arctan2(yList[i] - y, xList[i] - x)
+            dist2 = (xList[i] - x) ** 2.0 + (yList[i] - y) ** 2.0
+            dist4 = dist2 * dist2
+            magnitudeF = 1.0 / dist4
+            F -= np.array((magnitudeF * np.cos(theta), magnitudeF * np.sin(theta)))
 
     return F
-
-
-def avionGenerator(universeSize, num=0, energy=0.0):
-    x0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    y0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    vx0List = (2.0 * npr.random(num) - 1.0) * energy
-    vy0List = (2.0 * npr.random(num) - 1.0) * energy
-
-    return [Avion( x0=x0List[i] ,  y0=y0List[i],
-                  vx0=vx0List[i], vy0=vy0List[i])
-            for i in range(num)]
-
-def redGenerator(universeSize, num=0, energy=0.0):
-    x0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    y0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    vx0List = (2.0 * npr.random(num) - 1.0) * energy
-    vy0List = (2.0 * npr.random(num) - 1.0) * energy
-
-    return [Red( x0=x0List[i] ,  y0=y0List[i],
-                vx0=vx0List[i], vy0=vy0List[i])
-            for i in range(num)]
-
-def blueGenerator(universeSize, num=0, energy=0.0):
-    x0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    y0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    vx0List = (2.0 * npr.random(num) - 1.0) * energy
-    vy0List = (2.0 * npr.random(num) - 1.0) * energy
-
-    return [Blue( x0=x0List[i] ,  y0=y0List[i],
-                 vx0=vx0List[i], vy0=vy0List[i])
-            for i in range(num)]
-
-def greenGenerator(universeSize, num=0, energy=0.0):
-    x0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    y0List = (2.0 * npr.random(num) - 1.0) * universeSize
-    vx0List = (2.0 * npr.random(num) - 1.0) * energy
-    vy0List = (2.0 * npr.random(num) - 1.0) * energy
-
-    return [Green( x0=x0List[i] ,  y0=y0List[i],
-                  vx0=vx0List[i], vy0=vy0List[i])
-            for i in range(num)]
-
-
-
-
-
-class Particle:
-    def __init__(self, size, color, x0, y0, vx0, vy0, mass):
-        self.size = size
-        self.color = color
-
-        self.pos = np.array((x0, y0))
-        self.vel = np.array((vx0, vy0))
-        self.F   = np.array((0.0, 0.0))
-
-        self.mass = mass
-
-
-
-class Avion(Particle):
-    def __init__(self, x0=0.0, y0=0.0, vx0=0.0, vy0=0.0):
-        super().__init__(size=1,
-                         color='baby pink',
-                         x0=x0,
-                         y0=y0,
-                         vx0=vx0,
-                         vy0=vy0,
-                         mass=1.0)
-
-    def calcForce(self, avions, reds, blues, greens):
-        pass
-
-class Red(Particle):
-    def __init__(self, x0=0.0, y0=0.0, vx0=0.0, vy0=0.0):
-        super().__init__(size=5,
-                         color='red',
-                         x0=x0,
-                         y0=y0,
-                         vx0=vx0,
-                         vy0=vy0,
-                         mass=1.0)
-
-    def calcForce(self, avions, reds, blues, greens):
-        self.F = 10000.0 * calcInverseQuartic(x=self.pos[0], y=self.pos[1],
-                                    xList=np.array([blue.pos[0] for blue in blues]),
-                                    yList=np.array([blue.pos[1] for blue in blues]))
-
-        self.F -= -100.0 * calcInverseQuartic(x=self.pos[0], y=self.pos[1],
-                                     xList=np.array([green.pos[0] for green in greens]),
-                                     yList=np.array([green.pos[1] for green in greens]))
-
-class Blue(Particle):
-    def __init__(self, x0=0.0, y0=0.0, vx0=0.0, vy0=0.0):
-        super().__init__(size=5,
-                         color='blue',
-                         x0=x0,
-                         y0=y0,
-                         vx0=vx0,
-                         vy0=vy0,
-                         mass=1.0)
-
-    def calcForce(self, avions, reds, blues, greens):
-        self.F = 10000.0 * calcInverseQuartic(x=self.pos[0], y=self.pos[1],
-                                    xList=np.array([green.pos[0] for green in greens]),
-                                    yList=np.array([green.pos[1] for green in greens]))
-
-        self.F -= -100.0 * calcInverseQuartic(x=self.pos[0], y=self.pos[1],
-                                     xList=np.array([red.pos[0] for red in reds]),
-                                     yList=np.array([red.pos[1] for red in reds]))
-
-class Green(Particle):
-    def __init__(self, x0=0.0, y0=0.0, vx0=0.0, vy0=0.0):
-        super().__init__(size=5,
-                         color='green',
-                         x0=x0,
-                         y0=y0,
-                         vx0=vx0,
-                         vy0=vy0,
-                         mass=1.0)
-
-    def calcForce(self, avions, reds, blues, greens):
-        self.F = 10000.0 * calcInverseQuartic(x=self.pos[0], y=self.pos[1],
-                                    xList=np.array([red.pos[0] for red in reds]),
-                                    yList=np.array([red.pos[1] for red in reds]))
-
-        self.F -= -100.0 * calcInverseQuartic(x=self.pos[0], y=self.pos[1],
-                                     xList=np.array([blue.pos[0] for blue in blues]),
-                                     yList=np.array([blue.pos[1] for blue in blues]))
+'''
